@@ -1,28 +1,41 @@
-pipeline{
+pipeline {
     agent any
-        stages{
-            stage('Build'){
-                steps{
-                    echo "Build Docker Image"
-                    bat "docker build -t mypythonflaskapp ."
+    stages
+    {
+        stage('Build Docker Image') {
+            steps {
+                echo "Build Docker Image"
+                bat "docker build -t kubdemoapp:v1 ."
+            }
+        }
+        stage('Docker Login') {
+            steps {
+                  bat 'docker login -u dbhavana -p 9949422313'
                 }
             }
-            stage('Run'){
-                steps{
-                    echo "Run applictaion in Docker Container"
-                    bat "docker rm -f mycontainer || exit0"
-                    bat "docker run -d -p 5000:5000 --name mycontainer mypythonflaskapp"
-                } 
-            }
-
-        
-        }
-        post{
-            sucess{
-                echo "pipeline completed sucessfully"
-            }
-            failure{
-                echo "pipeline failed.Please check the logs"
+        stage('push Docker Image to Docker Hub') {
+            steps {
+                echo "push Docker Image to Docker Hub"
+                bat "docker tag kubdemoapp:v1 dbhavana/sample_demo:kubeimage1"               
+                    
+                bat "docker push dbhavana/sample_demo:kubeimage1"
+                
             }
         }
+        stage('Deploy to Kubernetes') { 
+            steps { 
+                    // apply deployment & service 
+                    bat 'kubectl apply -f deployment.yaml --validate=false' 
+                    bat 'kubectl apply -f service.yaml' 
+            } 
+        }
+    }
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Please check the logs.'
+        }
+    }
 }
